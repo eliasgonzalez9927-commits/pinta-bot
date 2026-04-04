@@ -7,7 +7,6 @@ const {
   fetchLatestBaileysVersion,
 } = require('@whiskeysockets/baileys');
 const pino = require('pino');
-const qrcode = require('qrcode-terminal');
 const path = require('path');
 const logger = require('./utils/logger');
 
@@ -36,8 +35,11 @@ async function connectToWhatsApp(onMessage) {
 
   sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
     if (qr) {
-      console.log('\nEscaneá este QR con WhatsApp → Dispositivos vinculados:\n');
-      qrcode.generate(qr, { small: true });
+      const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
+      console.log('\n=== ESCANEAR QR DE WHATSAPP ===');
+      console.log('Abrí este link en el navegador y escaneá el QR con WhatsApp → Dispositivos vinculados:');
+      console.log(url);
+      console.log('================================\n');
     }
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode;
