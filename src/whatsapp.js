@@ -58,12 +58,22 @@ async function connectToWhatsApp(onMessage) {
   });
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return;
+    logger.info('WHATSAPP', `messages.upsert recibido tipo=${type} cantidad=${messages.length}`);
     for (const msg of messages) {
+      const from = msg.key.remoteJid || '';
+      const fromMe = msg.key.fromMe;
+      logger.info('WHATSAPP', `msg from=${from} fromMe=${fromMe} type=${type}`);
+      if (type !== 'notify') continue;
       if (msg.key.fromMe) continue;
       if (!msg.message) continue;
       await onMessage(msg);
     }
+  });
+
+  // Log cualquier evento para debug
+  sock.ev.on('connection.update', (update) => {
+    if (update.qr || update.connection) return; // ya logueado arriba
+    logger.info('WHATSAPP', 'connection.update extra', { keys: Object.keys(update) });
   });
 
   return sock;
