@@ -62,10 +62,14 @@ async function connectToWhatsApp(onMessage) {
     for (const msg of messages) {
       const from = msg.key.remoteJid || '';
       const fromMe = msg.key.fromMe;
-      logger.info('WHATSAPP', `msg from=${from} fromMe=${fromMe} type=${type}`);
+      const msgKeys = msg.message ? Object.keys(msg.message).join(',') : 'NULL';
+      logger.info('WHATSAPP', `msg from=${from} fromMe=${fromMe} type=${type} msgKeys=${msgKeys}`);
       if (type !== 'notify') continue;
       if (msg.key.fromMe) continue;
-      if (!msg.message) continue;
+      if (!msg.message) {
+        logger.warn('WHATSAPP', 'msg.message es null, ignorando');
+        continue;
+      }
       await onMessage(msg);
     }
   });
