@@ -83,32 +83,16 @@ async function connectToWhatsApp(onMessage) {
   });
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    logger.info('WHATSAPP', `messages.upsert recibido tipo=${type} cantidad=${messages.length}`);
+    if (type !== 'notify') return;
     for (const msg of messages) {
-      const from = msg.key.remoteJid || '';
-      const fromMe = msg.key.fromMe;
-      const msgKeys = msg.message ? Object.keys(msg.message).join(',') : 'NULL';
-      logger.info('WHATSAPP', `msg from=${from} fromMe=${fromMe} type=${type} msgKeys=${msgKeys}`);
-      if (type !== 'notify') continue;
       if (msg.key.fromMe) continue;
-      if (!msg.message) {
-        logger.warn('WHATSAPP', 'msg.message es null, ignorando');
-        continue;
-      }
-      const texto = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
-      logger.info('WHATSAPP', `texto extraído: "${texto.slice(0, 60)}"`);
+      if (!msg.message) continue;
       try {
         await onMessage(msg);
       } catch (err) {
         logger.error('WHATSAPP', 'Error en onMessage: ' + err.message);
       }
     }
-  });
-
-  // Log cualquier evento para debug
-  sock.ev.on('connection.update', (update) => {
-    if (update.qr || update.connection) return; // ya logueado arriba
-    logger.info('WHATSAPP', 'connection.update extra', { keys: Object.keys(update) });
   });
 
   return sock;
