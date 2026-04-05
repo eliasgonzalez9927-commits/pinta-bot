@@ -12,6 +12,30 @@ const logger = require('./utils/logger');
 
 const AUTH_DIR = path.join(__dirname, '..', 'auth_info_baileys');
 
+/**
+ * Si existe BAILEYS_AUTH_B64 en env, restaura la sesión desde esa variable.
+ * Esto permite correr en Railway sin escanear QR en cada restart.
+ */
+function restoreAuthFromEnv() {
+  const b64 = process.env.BAILEYS_AUTH_B64;
+  if (!b64) return;
+  if (!require('fs').existsSync(AUTH_DIR)) {
+    require('fs').mkdirSync(AUTH_DIR, { recursive: true });
+  }
+  try {
+    const files = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
+    for (const [name, content] of Object.entries(files)) {
+      const dest = path.join(AUTH_DIR, name);
+      if (!require('fs').existsSync(dest)) {
+        require('fs').writeFileSync(dest, content, 'utf8');
+      }
+    }
+    logger.info('WHATSAPP', 'Sesión restaurada desde BAILEYS_AUTH_B64');
+  } catch (e) {
+    logger.warn('WHATSAPP', 'No se pudo restaurar sesión desde env: ' + e.message);
+  }
+}
+
 let _sock = null;
 
 /**
@@ -19,6 +43,7 @@ let _sock = null;
  * onMessage(msg) se llama por cada mensaje entrante.
  */
 async function connectToWhatsApp(onMessage) {
+  restoreAuthFromEnv();
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -70,7 +95,13 @@ async function connectToWhatsApp(onMessage) {
         logger.warn('WHATSAPP', 'msg.message es null, ignorando');
         continue;
       }
-      await onMessage(msg);
+      const texto = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
+      logger.info('WHATSAPP', `texto extraído: "${texto.slice(0, 60)}"`);
+      try {
+        await onMessage(msg);
+      } catch (err) {
+        logger.error('WHATSAPP', 'Error en onMessage: ' + err.message);
+      }
     }
   });
 
